@@ -1,8 +1,0 @@
-{
-  "http": {
-    "httpsRedirect": false
-  },
-  "build": {
-    "builder": "NIXPACKS"
-  }
-}
