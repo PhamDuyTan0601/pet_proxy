@@ -15,7 +15,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Target server
+// Target server - SỬA THÀNH URL ĐẦY ĐỦ
 const TARGET_SERVER = "https://pettracking2.onrender.com";
 
 // Health check
@@ -25,6 +25,7 @@ app.get("/", (req, res) => {
     message: "🐾 Pet Proxy HTTP Server is running!",
     protocol: "HTTP",
     timestamp: new Date().toISOString(),
+    target: TARGET_SERVER,
     endpoints: {
       deviceLookup: "GET /api/devices/pet/:deviceId",
       submitData: "POST /api/petData",
@@ -32,47 +33,92 @@ app.get("/", (req, res) => {
   });
 });
 
-// Proxy: Device Lookup
+// Proxy: Device Lookup - THÊM ERROR HANDLING
 app.get("/api/devices/pet/:deviceId", async (req, res) => {
   const deviceId = req.params.deviceId;
-  console.log(`🔍 Device lookup: ${deviceId}`);
+  console.log(`🔍 [PROXY] Device lookup: ${deviceId}`);
 
   try {
-    const response = await fetch(
-      `${TARGET_SERVER}/api/devices/pet/${deviceId}`
-    );
+    const targetURL = `${TARGET_SERVER}/api/devices/pet/${deviceId}`;
+    console.log(`📡 [PROXY] Forwarding to: ${targetURL}`);
+
+    const response = await fetch(targetURL, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "ESP32-Proxy/1.0",
+      },
+      timeout: 10000, // 10 seconds timeout
+    });
+
+    if (!response.ok) {
+      throw new Error(`Target server responded with ${response.status}`);
+    }
+
     const data = await response.json();
+    console.log(`✅ [PROXY] Success: ${response.status}`);
 
     res.status(response.status).json(data);
   } catch (error) {
-    console.error("❌ Proxy error:", error.message);
+    console.error("❌ [PROXY] Error:", error.message);
     res.status(502).json({
       success: false,
-      message: "Proxy error",
+      message: "Proxy error: Cannot connect to target server",
+      error: error.message,
+      target: TARGET_SERVER,
     });
   }
 });
 
 // Proxy: Submit Pet Data
 app.post("/api/petData", async (req, res) => {
-  console.log("📨 Pet data received:", req.body);
+  console.log("📨 [PROXY] Pet data received:", req.body);
 
   try {
-    const response = await fetch(`${TARGET_SERVER}/api/petData`, {
+    const targetURL = `${TARGET_SERVER}/api/petData`;
+    console.log(`📡 [PROXY] Forwarding to: ${targetURL}`);
+
+    const response = await fetch(targetURL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "User-Agent": "ESP32-Proxy/1.0",
       },
       body: JSON.stringify(req.body),
+      timeout: 10000,
     });
 
+    if (!response.ok) {
+      throw new Error(`Target server responded with ${response.status}`);
+    }
+
     const data = await response.json();
+    console.log(`✅ [PROXY] Data saved: ${response.status}`);
+
     res.status(response.status).json(data);
   } catch (error) {
-    console.error("❌ Proxy error:", error.message);
+    console.error("❌ [PROXY] Error:", error.message);
     res.status(502).json({
       success: false,
-      message: "Proxy error",
+      message: "Proxy error: Cannot connect to target server",
+      error: error.message,
+    });
+  }
+});
+
+// Test endpoint đến server chính
+app.get("/test-target", async (req, res) => {
+  try {
+    const response = await fetch(`${TARGET_SERVER}/test`);
+    const data = await response.json();
+    res.json({
+      proxy: "OK",
+      target: data,
+    });
+  } catch (error) {
+    res.status(502).json({
+      error: "Cannot reach target server",
+      details: error.message,
     });
   }
 });
@@ -80,5 +126,8 @@ app.post("/api/petData", async (req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Pet Proxy HTTP Server running on port ${PORT}`);
-  console.log(`🔗 ESP32 can send HTTP to this server!`);
+  console.log(
+    `🔗 URL: https://3f9d870b-1a91-4ec2-a27f-686ada8b9a07-00-1614ecdvgxkta.pike.replit.dev`
+  );
+  console.log(`🎯 Target: ${TARGET_SERVER}`);
 });
