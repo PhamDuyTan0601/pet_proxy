@@ -1,0 +1,15 @@
+{
+  "name": "pet-proxy",
+  "version": "1.0.0",
+  "description": "HTTP Proxy for ESP32 to Render",
+  "main": "proxy-server.js",
+  "scripts": {
+    "start": "node proxy-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
